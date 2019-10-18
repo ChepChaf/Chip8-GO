@@ -16,7 +16,8 @@ type chip8 struct {
 	Memory [0x1000]byte
 }
 
-func (c chip8) readRom(romName string) {
+func (c *chip8) readRom(romName string) {
+	fmt.Printf("Reading: %s\n", romName)
 	rom, err := os.Open(romName)
 	check(err)
 
@@ -35,7 +36,10 @@ func (c chip8) readRom(romName string) {
 			break
 		}
 
-		c.Memory[initialMemory+step] = b[:opCode]
+		c.Memory[initialMemory+step] = b[:opCode][0]
+		c.Memory[initialMemory+step+1] = b[:opCode][1]
+
+		step += 2
 	}
 
 	rom.Close()
@@ -46,4 +50,6 @@ func main() {
 
 	var chipEmulator = chip8{}
 	chipEmulator.readRom("./c8games/PONG")
+
+	fmt.Print("Memory: ", chipEmulator.Memory)
 }

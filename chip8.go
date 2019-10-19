@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 func check(e error) {
@@ -13,10 +15,12 @@ func check(e error) {
 }
 
 type chip8 struct {
-	Memory [0x1000]byte
-	PC     uint16
-	V      [16]byte
-	I      uint16
+	Memory  [0x1000]byte
+	PC      uint16
+	V       [16]byte
+	I       uint16
+	Display [64][32]byte
+	Running bool
 }
 
 func (c *chip8) readRom(romName string) {
@@ -48,7 +52,7 @@ func (c *chip8) readRom(romName string) {
 	rom.Close()
 }
 
-func (c *chip8) execNextOperation() int {
+func (c *chip8) execNextOperation() {
 	switch c.Memory[c.PC] & 0xF0 {
 	case 0x60:
 		x := c.Memory[c.PC] & 0x0F
@@ -62,10 +66,53 @@ func (c *chip8) execNextOperation() int {
 	default:
 		fmt.Printf("\nOperation not implemented: %X%X", c.Memory[c.PC], c.Memory[c.PC+1])
 
-		return -1
+		c.Running = false
 	}
 
-	return 1
+	if c.Running {
+		c.updateScreen()
+	}
+}
+
+func (c *chip8) updateScreen() {
+	// fmt.Print("Memory: ", c.Memory)
+	fmt.Printf("\nPC: %X", c.PC)
+	fmt.Print("\nV: ", c.V)
+	fmt.Printf("\nI: %X", c.I)
+	fmt.Printf("\nOPCODE: %X%X", c.Memory[c.PC], c.Memory[c.PC+1])
+
+	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+		switch event.(type) {
+		case *sdl.QuitEvent:
+			println("Quit")
+			c.Running = false
+			break
+		}
+	}
+}
+
+func (c *chip8) initWindow() {
+	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
+		panic(err)
+	}
+	defer sdl.Quit()
+
+	window, err := sdl.CreateWindow("test", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
+		640, 320, sdl.WINDOW_SHOWN)
+	if err != nil {
+		panic(err)
+	}
+	defer window.Destroy()
+
+	surface, err := window.GetSurface()
+	if err != nil {
+		panic(err)
+	}
+	surface.FillRect(nil, 0)
+
+	window.UpdateSurface()
+
+	c.Running = true
 }
 
 func startChip8() *chip8 {
@@ -81,14 +128,9 @@ func main() {
 	var chipEmulator = startChip8()
 	chipEmulator.readRom("./c8games/PONG")
 
-	for {
-		// fmt.Print("Memory: ", chipEmulator.Memory)
-		fmt.Printf("\nPC: %X", chipEmulator.PC)
-		fmt.Print("\nV: ", chipEmulator.V)
-		fmt.Printf("\nI: %X", chipEmulator.I)
-		fmt.Printf("\nOPCODE: %X%X", chipEmulator.Memory[chipEmulator.PC], chipEmulator.Memory[chipEmulator.PC+1])
-		if chipEmulator.execNextOperation() < 0 {
-			break
-		}
+	chipEmulator.initWindow()
+
+	for chipEmulator.Running {
+		chipEmulator.execNextOperation()
 	}
 }

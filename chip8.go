@@ -14,8 +14,9 @@ func check(e error) {
 
 type chip8 struct {
 	Memory [0x1000]byte
-	PC     int16
+	PC     uint16
 	V      [16]byte
+	I      uint16
 }
 
 func (c *chip8) readRom(romName string) {
@@ -54,6 +55,10 @@ func (c *chip8) execNextOperation() int {
 		c.V[x] = c.Memory[c.PC+1]
 
 		c.PC += 2
+	case 0xA0:
+		c.I = uint16(c.Memory[c.PC]&0x0F)<<8 | uint16(c.Memory[c.PC+1])
+
+		c.PC += 2
 	default:
 		fmt.Printf("\nOperation not implemented: %X%X", c.Memory[c.PC], c.Memory[c.PC+1])
 
@@ -80,7 +85,8 @@ func main() {
 		// fmt.Print("Memory: ", chipEmulator.Memory)
 		fmt.Printf("\nPC: %X", chipEmulator.PC)
 		fmt.Print("\nV: ", chipEmulator.V)
-
+		fmt.Printf("\nI: %X", chipEmulator.I)
+		fmt.Printf("\nOPCODE: %X%X", chipEmulator.Memory[chipEmulator.PC], chipEmulator.Memory[chipEmulator.PC+1])
 		if chipEmulator.execNextOperation() < 0 {
 			break
 		}

@@ -27,7 +27,7 @@ type chip8 struct {
 	V       [16]uint8
 	I       uint16
 	SP      uint8
-	stack   [16]uint16 + (8*i)
+	stack   [16]uint16
 	Display [0x440]uint8
 	Running bool
 }
@@ -60,7 +60,9 @@ func (c *chip8) readRom(romName string) {
 }
 
 func (c *chip8) execNextOperation() {
-	switch c.Memory[c.PC] & 0xF0 {
+	currentCommand := c.Memory[c.PC] & 0xF0
+
+	switch currentCommand {
 	case 0x20:
 		c.SP++
 		c.stack[c.SP] = c.PC
@@ -85,21 +87,35 @@ func (c *chip8) execNextOperation() {
 		}
 
 		c.PC += 2
-	/*case 0xF0:
-	switch (c.PC + 1) & 0xFF {
-	case 0x33:
-		index := (c.PC & 0x0F) >> 4
-		c.Memory[c.I] = c.V[index] / 100
-		c.Memory[c.I+1] = (c.V[index] % 100) / 10
-		c.Memory[c.I+2] = c.V[index] % 10
+	case 0xF0:
+		currentCommand = c.Memory[(c.PC+1)] & 0xFF
 
-		fmt.Printf("vX: %X", c.V[(c.PC)&0x0F>>4])
-		fmt.Printf("c.I: %X", c.Memory[c.I])
-		fmt.Printf("c.I: %X", c.Memory[c.I+1])
-		fmt.Printf("c.I: %X", c.Memory[c.I+2])
+		switch currentCommand {
+		case 0x33:
+			index := (c.PC & 0x0F) >> 4
+			c.Memory[c.I] = c.V[index] / 100
+			c.Memory[c.I+1] = (c.V[index] % 100) / 10
+			c.Memory[c.I+2] = c.V[index] % 10
 
-		c.PC += 2
-	}*/
+			fmt.Printf("vX: %X", c.V[(c.PC)&0x0F>>4])
+			fmt.Printf("c.I: %X", c.Memory[c.I])
+			fmt.Printf("c.I: %X", c.Memory[c.I+1])
+			fmt.Printf("c.I: %X", c.Memory[c.I+2])
+
+			c.PC += 2
+		case 0x65:
+			x := c.Memory[c.PC] & 0x0F
+
+			for i := 0; i < int(x+1); i++ {
+				c.V[i] = c.Memory[c.I+uint16(i)]
+			}
+
+			c.PC += 2
+		default:
+			fmt.Printf("\nOperation not implemented: %X%X", c.Memory[c.PC], c.Memory[c.PC+1])
+
+			c.Running = false
+		}
 	default:
 		fmt.Printf("\nOperation not implemented: %X%X", c.Memory[c.PC], c.Memory[c.PC+1])
 
